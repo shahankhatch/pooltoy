@@ -23,7 +23,7 @@ func handleMsgCreateUser(ctx sdk.Context, k Keeper, msg MsgCreateUser) (*sdk.Res
 		return nil, err
 	}
 	var allUsers []types.User
-	k.Cdc.MustUnmarshalJSON(allUsersRaw, &allUsers)
+	ModuleCdc.LegacyAmino.MustUnmarshalJSON(allUsersRaw, &allUsers)
 
 	// does this creator have permission to create this new user?
 	// bare in mind special case allows create as initialization when there are no users yet
@@ -50,5 +50,5 @@ func handleMsgCreateUser(ctx sdk.Context, k Keeper, msg MsgCreateUser) (*sdk.Res
 		return nil, sdkerrors.Wrap(sdkerrors.ErrUnauthorized, errMsg)
 	}
 
-	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
+	return &sdk.Result{Events: ctx.EventManager().ABCIEvents()}, nil
 }

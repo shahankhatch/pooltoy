@@ -17,7 +17,7 @@ import (
 )
 
 // GetQueryCmd returns the cli query commands for this module
-func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+func GetQueryCmd(queryRoute string, cdc *codec.AminoCodec) *cobra.Command {
 	// Group pooltoy queries under a subcommand
 	pooltoyQueryCmd := &cobra.Command{
 		Use:                        types.ModuleName,
@@ -27,12 +27,9 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
-	pooltoyQueryCmd.AddCommand(
-		flags.GetCommands(
-			// this line is used by starport scaffolding
-			GetCmdListUsers(queryRoute, cdc),
-		)...,
-	)
+	cmdListUsers := GetCmdListUsers(queryRoute, cdc)
+	flags.AddTxFlagsToCmd(cmdListUsers)
+	pooltoyQueryCmd.AddCommand(cmdListUsers)
 
 	return pooltoyQueryCmd
 }

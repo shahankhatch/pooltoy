@@ -2,20 +2,17 @@ package main
 
 import (
 	"fmt"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"os"
 	"path"
 
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/keys"
-	"github.com/cosmos/cosmos-sdk/client/lcd"
 	"github.com/cosmos/cosmos-sdk/client/rpc"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/version"
-	"github.com/cosmos/cosmos-sdk/x/auth"
 	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
-	authrest "github.com/cosmos/cosmos-sdk/x/auth/client/rest"
-	"github.com/cosmos/cosmos-sdk/x/bank"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	bankcmd "github.com/cosmos/cosmos-sdk/x/bank/client/cli"
 
 	"github.com/spf13/cobra"
@@ -26,6 +23,8 @@ import (
 
 	"github.com/interchainberlin/pooltoy/app"
 	"github.com/interchainberlin/pooltoy/validation"
+	pooltoytypes "github.com/interchainberlin/pooltoy/x/pooltoy/types"
+	tmcli "github.com/tendermint/tendermint/libs/cli"
 )
 
 func main() {
@@ -42,9 +41,9 @@ func main() {
 	config.SetBech32PrefixForConsensusNode(sdk.Bech32PrefixConsAddr, sdk.Bech32PrefixConsPub)
 	config.Seal()
 
-	sdk.CoinDenomRegex = func() string {
+	sdk.SetCoinDenomRegex(func() string {
 		return validation.ReDnmString
-	}
+	})
 
 	// TODO: setup keybase, viper object, etc. to be passed into
 	// the below functions and eliminate global vars, like we do
@@ -64,16 +63,14 @@ func main() {
 	// Construct Root Command
 	rootCmd.AddCommand(
 		rpc.StatusCommand(),
-		client.ConfigCmd(app.DefaultCLIHome),
-		queryCmd(cdc),
-		txCmd(cdc),
+		queryCmd(cdc.Amino),
+		txCmd(cdc.Amino),
 		flags.LineBreak,
-		lcd.ServeCommand(cdc, registerRoutes),
 		flags.LineBreak,
-		keys.Commands(),
+		keys.Commands(pooltoytypes.ModuleName),
 		flags.LineBreak,
-		version.Cmd,
-		flags.NewCompletionCmd(rootCmd, true),
+		version.NewVersionCommand(),
+		tmcli.NewCompletionCmd(rootCmd, true),
 	)
 
 	// Add flags and prefix all env exposed with AA
@@ -94,17 +91,17 @@ func queryCmd(cdc *amino.Codec) *cobra.Command {
 	}
 
 	queryCmd.AddCommand(
-		authcmd.GetAccountCmd(cdc),
+		authcmd.GetAccountCmd(),
 		flags.LineBreak,
-		rpc.ValidatorCommand(cdc),
+		rpc.ValidatorCommand(),
 		rpc.BlockCommand(),
-		authcmd.QueryTxsByEventsCmd(cdc),
-		authcmd.QueryTxCmd(cdc),
+		authcmd.QueryTxsByEventsCmd(),
+		authcmd.QueryTxCmd(),
 		flags.LineBreak,
 	)
 
 	// add modules' query commands
-	app.ModuleBasics.AddQueryCommands(queryCmd, cdc)
+	app.ModuleBasics.AddQueryCommands(queryCmd)
 
 	return queryCmd
 }
@@ -116,25 +113,25 @@ func txCmd(cdc *amino.Codec) *cobra.Command {
 	}
 
 	txCmd.AddCommand(
-		bankcmd.SendTxCmd(cdc),
+		bankcmd.NewSendTxCmd(),
 		flags.LineBreak,
-		authcmd.GetSignCommand(cdc),
-		authcmd.GetMultiSignCommand(cdc),
+		authcmd.GetSignCommand(),
+		authcmd.GetMultiSignCommand(),
 		flags.LineBreak,
-		authcmd.GetBroadcastCommand(cdc),
-		authcmd.GetEncodeCommand(cdc),
-		authcmd.GetDecodeCommand(cdc),
+		authcmd.GetBroadcastCommand(),
+		authcmd.GetEncodeCommand(),
+		authcmd.GetDecodeCommand(),
 		flags.LineBreak,
 	)
 
 	// add modules' tx commands
-	app.ModuleBasics.AddTxCommands(txCmd, cdc)
+	app.ModuleBasics.AddTxCommands(txCmd)
 
 	// remove auth and bank commands as they're mounted under the root tx command
 	var cmdsToRemove []*cobra.Command
 
 	for _, cmd := range txCmd.Commands() {
-		if cmd.Use == auth.ModuleName || cmd.Use == bank.ModuleName {
+		if cmd.Use == authtypes.ModuleName || cmd.Use == banktypes.ModuleName {
 			cmdsToRemove = append(cmdsToRemove, cmd)
 		}
 	}
@@ -147,11 +144,11 @@ func txCmd(cdc *amino.Codec) *cobra.Command {
 // registerRoutes registers the routes from the different modules for the LCD.
 // NOTE: details on the routes added for each module are in the module documentation
 // NOTE: If making updates here you also need to update the test helper in client/lcd/test_helper.go
-func registerRoutes(rs *lcd.RestServer) {
-	client.RegisterRoutes(rs.CliCtx, rs.Mux)
-	authrest.RegisterTxRoutes(rs.CliCtx, rs.Mux)
-	app.ModuleBasics.RegisterRESTRoutes(rs.CliCtx, rs.Mux)
-}
+//func registerRoutes(rs *lcd.RestServer) {
+//	client.RegisterRoutes(rs.CliCtx, rs.Mux)
+//	authrest.RegisterTxRoutes(rs.CliCtx, rs.Mux)
+//	app.ModuleBasics.RegisterRESTRoutes(rs.CliCtx, rs.Mux)
+//}
 
 func initConfig(cmd *cobra.Command) error {
 	home, err := cmd.PersistentFlags().GetString(cli.HomeFlag)

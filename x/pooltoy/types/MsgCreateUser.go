@@ -17,6 +17,18 @@ type MsgCreateUser struct {
 	Email       string         `json:"email" yaml:"email"`
 }
 
+func (msg MsgCreateUser) Reset() {
+	panic("implement me")
+}
+
+func (msg MsgCreateUser) String() string {
+	panic("implement me")
+}
+
+func (msg MsgCreateUser) ProtoMessage() {
+	panic("implement me")
+}
+
 func NewMsgCreateUser(creator sdk.AccAddress, userAccount sdk.AccAddress, isAdmin bool, name string, email string) MsgCreateUser {
 	return MsgCreateUser{
 		ID:          uuid.New().String(),

@@ -2,8 +2,9 @@ package types
 
 import (
 	"fmt"
+	//"github.com/cosmos/cosmos-sdk/x/params"
 
-	"github.com/cosmos/cosmos-sdk/x/params"
+	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 )
 
 // Default parameter namespace
@@ -14,13 +15,13 @@ const (
 
 // Parameter store keys
 var (
-	// TODO: Define your keys for the parameter store
-	// KeyParamName          = []byte("ParamName")
+// TODO: Define your keys for the parameter store
+// KeyParamName          = []byte("ParamName")
 )
 
 // ParamKeyTable for pooltoy module
-func ParamKeyTable() params.KeyTable {
-	return params.NewKeyTable().RegisterParamSet(&Params{})
+func ParamKeyTable() paramstypes.KeyTable {
+	return paramstypes.NewKeyTable().RegisterParamSet(&Params{})
 }
 
 // Params - used for initializing default parameter for pooltoy at genesis
@@ -30,7 +31,7 @@ type Params struct {
 }
 
 // NewParams creates a new Params object
-func NewParams(/* TODO: Pass in the paramters*/) Params {
+func NewParams( /* TODO: Pass in the paramters*/ ) Params {
 	return Params{
 		// TODO: Create your Params Type
 	}
@@ -40,12 +41,12 @@ func NewParams(/* TODO: Pass in the paramters*/) Params {
 func (p Params) String() string {
 	return fmt.Sprintf(`
 	// TODO: Return all the params as a string
-	`, )
+	`)
 }
 
 // ParamSetPairs - Implements params.ParamSet
-func (p *Params) ParamSetPairs() params.ParamSetPairs {
-	return params.ParamSetPairs{
+func (p *Params) ParamSetPairs() paramstypes.ParamSetPairs {
+	return paramstypes.ParamSetPairs{
 		// TODO: Pair your key with the param
 		// params.NewParamSetPair(KeyParamName, &p.ParamName),
 	}

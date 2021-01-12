@@ -12,7 +12,7 @@ import (
 )
 
 // GetTxCmd returns the transaction commands for this module
-func GetTxCmd(cdc *codec.Codec) *cobra.Command {
+func GetTxCmd(cdc *codec.AminoCodec) *cobra.Command {
 	pooltoyTxCmd := &cobra.Command{
 		Use:                        types.ModuleName,
 		Short:                      fmt.Sprintf("%s transactions subcommands", types.ModuleName),
@@ -21,10 +21,9 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
-	pooltoyTxCmd.AddCommand(flags.PostCommands(
-	// this line is used by starport scaffolding
-		GetCmdCreateUser(cdc),
-	)...)
+	createuserCmd := GetCmdCreateUser(cdc)
+	flags.AddTxFlagsToCmd(createuserCmd)
+	pooltoyTxCmd.AddCommand(createuserCmd)
 
 	return pooltoyTxCmd
 }

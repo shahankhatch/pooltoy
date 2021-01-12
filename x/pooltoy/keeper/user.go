@@ -10,7 +10,7 @@ func (k Keeper) CreateUser(ctx sdk.Context, user types.User) {
 
 	store := ctx.KVStore(k.storeKey)
 	key := []byte(types.UserPrefix + user.ID)
-	value := k.Cdc.MustMarshalBinaryLengthPrefixed(user)
+	value := k.Cdc.LegacyAmino.MustMarshalBinaryLengthPrefixed(user)
 	store.Set(key, value)
 
 	acc := k.accountKeeper.GetAccount(ctx, user.UserAccount)
@@ -29,7 +29,7 @@ func (k Keeper) GetUserByAccAddress(ctx sdk.Context, queriedUserAccAddress sdk.A
 	iterator := sdk.KVStorePrefixIterator(store, []byte(types.UserPrefix))
 	for ; iterator.Valid(); iterator.Next() {
 		var user types.User
-		k.Cdc.MustUnmarshalBinaryLengthPrefixed(store.Get(iterator.Key()), &user)
+		k.Cdc.LegacyAmino.MustUnmarshalBinaryLengthPrefixed(store.Get(iterator.Key()), &user)
 		if user.UserAccount.Equals(queriedUserAccAddress) {
 			queriedUser = user
 		}
@@ -43,9 +43,9 @@ func (k Keeper) ListUsers(ctx sdk.Context) ([]byte, error) {
 	iterator := sdk.KVStorePrefixIterator(store, []byte(types.UserPrefix))
 	for ; iterator.Valid(); iterator.Next() {
 		var user types.User
-		k.Cdc.MustUnmarshalBinaryLengthPrefixed(store.Get(iterator.Key()), &user)
+		k.Cdc.LegacyAmino.MustUnmarshalBinaryLengthPrefixed(store.Get(iterator.Key()), &user)
 		userList = append(userList, user)
 	}
-	res := codec.MustMarshalJSONIndent(k.Cdc, userList)
+	res := codec.MustMarshalJSONIndent(k.Cdc.LegacyAmino, userList)
 	return res, nil
 }

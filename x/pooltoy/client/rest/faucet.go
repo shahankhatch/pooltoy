@@ -7,16 +7,18 @@ import (
 	"net/http"
 	"os/exec"
 
-	"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/client"
+	//"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/cosmos/cosmos-sdk/types/rest"
-	"github.com/tendermint/tendermint/libs/bech32"
+	//"github.com/tendermint/tendermint/libs/bech32"
 )
 
 type claimReq struct {
 	Address string
 }
 
-func faucetHandler(cliCtx context.CLIContext) http.HandlerFunc {
+func faucetHandler(cliCtx client.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var claim claimReq
 		decoder := json.NewDecoder(r.Body)

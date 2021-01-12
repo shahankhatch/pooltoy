@@ -1,20 +1,18 @@
 package cli
 
 import (
-	"bufio"
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/tx"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	"github.com/interchainberlin/pooltoy/x/pooltoy/types"
 )
 
-func GetCmdCreateUser(cdc *codec.Codec) *cobra.Command {
+func GetCmdCreateUser(cdc *codec.AminoCodec) *cobra.Command {
 	return &cobra.Command{
 		Use:   "create-user [userAccount] [isAdmin] [name] [email]",
 		Short: "Creates a new user",
@@ -33,15 +31,14 @@ func GetCmdCreateUser(cdc *codec.Codec) *cobra.Command {
 			argsName := string(args[2])
 			argsEmail := string(args[3])
 
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf := bufio.NewReader(cmd.InOrStdin())
-			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
-			msg := types.NewMsgCreateUser(cliCtx.GetFromAddress(), userAccount, isAdmin, argsName, argsEmail)
+			clientCtx := client.GetClientContextFromCmd(cmd)
+			msg := types.NewMsgCreateUser(clientCtx.GetFromAddress(), userAccount, isAdmin, argsName, argsEmail)
 			err = msg.ValidateBasic()
 			if err != nil {
 				return err
 			}
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
 }

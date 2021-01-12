@@ -2,23 +2,36 @@ module github.com/interchainberlin/pooltoy
 
 go 1.13
 
+replace github.com/okwme/modules/incubator/faucet => /Users/shahank/git_interchain/faucet_modules/incubator/faucet
+
 require (
-	github.com/cosmos/cosmos-sdk v0.39.2-0.20201004082237-5b6cff4f276e
-	// github.com/cosmos/cosmos-sdk v0.38.4
-	github.com/golang/mock v1.4.3 // indirect
-	github.com/google/uuid v1.0.0
-	github.com/gorilla/mux v1.7.4
+	github.com/DataDog/zstd v1.4.5 // indirect
+	github.com/cosmos/cosmos-sdk v0.40.0
+	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
+	github.com/dgraph-io/ristretto v0.0.3 // indirect
+	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
+	github.com/enigmampc/btcutil v1.0.3-0.20200723161021-e2fb6adb2a25 // indirect
+	github.com/golang/mock v1.4.4 // indirect
+	github.com/google/uuid v1.1.2
+	github.com/gorilla/handlers v1.5.1 // indirect
+	github.com/gorilla/mux v1.8.0
+	github.com/grpc-ecosystem/grpc-gateway v1.16.0
+	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/okwme/modules/incubator/faucet v0.0.0-20200719150004-606b92fc6e9c
-	github.com/onsi/ginkgo v1.8.0 // indirect
-	github.com/onsi/gomega v1.5.0 // indirect
-	github.com/spf13/afero v1.2.2 // indirect
-	github.com/spf13/cobra v1.0.0
-	github.com/spf13/viper v1.7.0
+	github.com/pelletier/go-toml v1.8.0 // indirect
+	github.com/prometheus/client_golang v1.8.0 // indirect
+	github.com/rakyll/statik v0.1.7
+	github.com/regen-network/cosmos-proto v0.3.0 // indirect
+	github.com/spf13/cast v1.3.1 // indirect
+	github.com/spf13/cobra v1.1.1
+	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
-	github.com/tendermint/go-amino v0.15.1
-	github.com/tendermint/tendermint v0.33.7
-	github.com/tendermint/tm-db v0.5.1
-	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2 // indirect
+	github.com/tendermint/go-amino v0.16.0
+	github.com/tendermint/iavl v0.14.1 // indirect
+	github.com/tendermint/tendermint v0.34.1
+	github.com/tendermint/tm-db v0.6.3
+	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb // indirect
+	rsc.io/quote/v3 v3.1.0 // indirect
 )
 
 // replace github.com/okwme/modules/incubator/faucet => /Users/billy/GitHub.com/okwme/modules/incubator/faucet
