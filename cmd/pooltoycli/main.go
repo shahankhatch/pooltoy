@@ -32,7 +32,7 @@ func main() {
 	cobra.EnableCommandSorting = false
 
 	// Instantiate the codec for the command line application
-	cdc := app.MakeCodec()
+	cdc := app.MakeEncodingConfig()
 
 	// Read in the configuration file for the sdk
 	config := sdk.GetConfig()
@@ -63,8 +63,8 @@ func main() {
 	// Construct Root Command
 	rootCmd.AddCommand(
 		rpc.StatusCommand(),
-		queryCmd(cdc.Amino),
-		txCmd(cdc.Amino),
+		queryCmd(cdc.AminoCodec.Amino),
+		txCmd(cdc.AminoCodec.Amino),
 		flags.LineBreak,
 		flags.LineBreak,
 		keys.Commands(pooltoytypes.ModuleName),

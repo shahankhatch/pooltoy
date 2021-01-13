@@ -2,9 +2,7 @@ package main
 
 import (
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/cosmos/cosmos-sdk/x/crisis"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -17,12 +15,12 @@ import (
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client/debug"
 	"github.com/cosmos/cosmos-sdk/server"
-	"github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/cosmos/cosmos-sdk/store"
 	storeTypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 	"github.com/interchainberlin/pooltoy/app"
+	pooltoyparams "github.com/interchainberlin/pooltoy/params"
 )
 
 const flagInvCheckPeriod = "inv-check-period"
@@ -30,7 +28,7 @@ const flagInvCheckPeriod = "inv-check-period"
 var invCheckPeriod uint
 
 func main() {
-	cdc := app.MakeCodec()
+	cdc := app.MakeEncodingConfig()
 
 	newDnmRegex := `[\x{1F600}-\x{1F6FF}]`
 	sdk.SetCoinDenomRegex(func() string {
@@ -55,17 +53,16 @@ func main() {
 	rootCmd.AddCommand(genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome))
 	rootCmd.AddCommand(genutilcli.MigrateGenesisCmd())
 	rootCmd.AddCommand(
-		genutilcli.GenTxCmd(app.ModuleBasics, app.MakeTestEncodingConfig().TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
+		genutilcli.GenTxCmd(app.ModuleBasics, app.MakeEncodingConfig().TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
 	)
 	rootCmd.AddCommand(genutilcli.ValidateGenesisCmd(app.ModuleBasics))
-	rootCmd.AddCommand(AddGenesisAccountCmd(ctx, cdc, app.DefaultNodeHome, app.DefaultCLIHome))
+	rootCmd.AddCommand(AddGenesisAccountCmd(ctx, cdc.AminoCodec, app.DefaultNodeHome, app.DefaultCLIHome))
 	rootCmd.AddCommand(tmcli.NewCompletionCmd(rootCmd, true))
 	rootCmd.AddCommand(debug.Cmd())
 
-	encodingConfig := simapp.MakeTestEncodingConfig()
+	encodingConfig := app.MakeEncodingConfig()
 	a := appCreator{encodingConfig}
-	server.AddCommands(rootCmd, app.DefaultNodeHome, a.newApp, a.appExport, addModuleInitFlags)
-	//server.AddCommands(rootCmd, app.DefaultNodeHome, newApp, createSimappAndExport, addModuleInitFlags)
+	server.AddCommands(rootCmd, app.DefaultNodeHome, a.newApp, a.appExport, nil)
 
 	// prepare and add flags
 	executor := tmcli.PrepareBaseCmd(rootCmd, "AU", app.DefaultNodeHome)
@@ -78,7 +75,7 @@ func main() {
 }
 
 type appCreator struct {
-	encCfg params.EncodingConfig
+	encCfg pooltoyparams.EncodingConfig
 }
 
 func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, appOpts servertypes.AppOptions) servertypes.Application {
@@ -88,7 +85,7 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 		cache = store.NewCommitKVStoreCacheManager()
 	}
 
-	return app.NewInitApp(
+	return app.NewPooltoyApp(
 		logger, db, traceStore, true, invCheckPeriod,
 		baseapp.SetPruning(storeTypes.NewPruningOptionsFromString(viper.GetString("pruning"))),
 		baseapp.SetMinGasPrices(viper.GetString(server.FlagMinGasPrices)),
@@ -102,7 +99,7 @@ func (a appCreator) appExport(
 	logger log.Logger, db dbm.DB, traceStore io.Writer, height int64, forZeroHeight bool, jailWhiteList []string, appOpts servertypes.AppOptions) (servertypes.ExportedApp, error) {
 
 	if height != -1 {
-		aApp := app.NewInitApp(logger, db, traceStore, false, uint(1))
+		aApp := app.NewPooltoyApp(logger, db, traceStore, false, uint(1))
 		err := aApp.LoadHeight(height)
 		if err != nil {
 			return servertypes.ExportedApp{}, err
@@ -110,11 +107,7 @@ func (a appCreator) appExport(
 		return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
 	}
 
-	aApp := app.NewInitApp(logger, db, traceStore, true, uint(1))
+	aApp := app.NewPooltoyApp(logger, db, traceStore, true, uint(1))
 
 	return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
-}
-
-func addModuleInitFlags(startCmd *cobra.Command) {
-	crisis.AddModuleInitFlags(startCmd)
 }

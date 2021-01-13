@@ -8,7 +8,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/server/api"
 	"github.com/cosmos/cosmos-sdk/server/config"
-	simappparams "github.com/cosmos/cosmos-sdk/simapp/params"
+	"github.com/cosmos/cosmos-sdk/simapp"
 	"github.com/cosmos/cosmos-sdk/std"
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authrest "github.com/cosmos/cosmos-sdk/x/auth/client/rest"
@@ -23,7 +23,6 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"net/http"
 
-	//"github.com/cosmos/cosmos-sdk/x/supply"
 	"io"
 	"os"
 	"time"
@@ -35,12 +34,12 @@ import (
 
 	bam "github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/version"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
+	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
@@ -55,12 +54,12 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	//"github.com/cosmos/cosmos-sdk/x/supply"
+	pooltoyparams "github.com/interchainberlin/pooltoy/params"
 	"github.com/interchainberlin/pooltoy/x/pooltoy"
 	"github.com/okwme/modules/incubator/faucet"
 )
 
-const appName = "app"
+const appName = "pooltoy"
 
 var (
 	DefaultCLIHome  = os.ExpandEnv("$HOME/.pooltoycli")
@@ -73,7 +72,6 @@ var (
 		distr.AppModuleBasic{},
 		params.AppModuleBasic{},
 		slashing.AppModuleBasic{},
-		//supply.AppModuleBasic{},
 		pooltoy.AppModuleBasic{},
 		faucet.AppModule{},
 	)
@@ -92,19 +90,14 @@ var (
 	}
 )
 
-func MakeCodec() *codec.AminoCodec {
-	var cdc = codec.NewLegacyAmino()
-
-	ModuleBasics.RegisterLegacyAminoCodec(cdc)
-	sdk.RegisterLegacyAminoCodec(cdc)
-	codec.RegisterEvidences(cdc)
-	cdc.Seal()
-	return codec.NewAminoCodec(cdc)
-}
-
-type NewApp struct {
+type PooltoyApp struct {
 	*bam.BaseApp
-	cdc *codec.AminoCodec
+	//cdc *codec.AminoCodec
+
+	//legacyAmino *codec.LegacyAmino
+	//appCodec    codec.Marshaler
+
+	enc pooltoyparams.EncodingConfig
 
 	interfaceRegistry types.InterfaceRegistry
 
@@ -120,27 +113,28 @@ type NewApp struct {
 	stakingKeeper  stakingkeeper.Keeper
 	slashingKeeper slashingkeeper.Keeper
 	distrKeeper    distrkeeper.Keeper
-	//supplyKeeper   supply.Keeper
-	paramsKeeper  paramskeeper.Keeper
-	pooltoyKeeper pooltoy.Keeper
-	faucetKeeper  faucet.Keeper
+	paramsKeeper   paramskeeper.Keeper
+	pooltoyKeeper  pooltoy.Keeper
+	faucetKeeper   faucet.Keeper
 
 	mm *module.Manager
 
 	sm *module.SimulationManager
 }
 
-var _ simapp.App = (*NewApp)(nil)
+var (
+	_ simapp.App       = (*PooltoyApp)(nil)
+	_ abci.Application = (*PooltoyApp)(nil)
+)
 
-func NewInitApp(
+func NewPooltoyApp(
 	logger log.Logger, db dbm.DB, traceStore io.Writer, loadLatest bool,
 	invCheckPeriod uint, baseAppOptions ...func(*bam.BaseApp),
-) *NewApp {
-	cdc := MakeCodec()
+) *PooltoyApp {
+	cdc := MakeEncodingConfig()
 
-	config := MakeTestEncodingConfig()
-	// authtx.DefaultTxDecoder(codec.NewProtoCodec(codectypes.NewInterfaceRegistry()))
-	bApp := bam.NewBaseApp(appName, logger, db, config.TxConfig.TxDecoder(), baseAppOptions...)
+	pooltoyconfig := MakeEncodingConfig()
+	bApp := bam.NewBaseApp(appName, logger, db, pooltoyconfig.TxConfig.TxDecoder(), baseAppOptions...)
 	bApp.SetCommitMultiStoreTracer(traceStore)
 	bApp.SetAppVersion(version.Version)
 
@@ -149,16 +143,16 @@ func NewInitApp(
 
 	tKeys := sdk.NewTransientStoreKeys(paramstypes.TStoreKey)
 
-	var app = &NewApp{
+	var app = &PooltoyApp{
 		BaseApp:        bApp,
-		cdc:            cdc,
+		enc:            cdc,
 		invCheckPeriod: invCheckPeriod,
 		keys:           keys,
 		tKeys:          tKeys,
 		subspaces:      make(map[string]paramstypes.Subspace),
 	}
 
-	app.paramsKeeper = paramskeeper.NewKeeper(app.cdc, cdc.LegacyAmino, keys[paramstypes.StoreKey], tKeys[paramstypes.TStoreKey])
+	app.paramsKeeper = paramskeeper.NewKeeper(app.enc.Marshaler, app.enc.LegacyAmino, keys[paramstypes.StoreKey], tKeys[paramstypes.TStoreKey])
 	app.subspaces[authtypes.ModuleName] = app.paramsKeeper.Subspace(authtypes.ModuleName)
 	app.subspaces[banktypes.ModuleName] = app.paramsKeeper.Subspace(banktypes.ModuleName)
 	app.subspaces[stakingtypes.ModuleName] = app.paramsKeeper.Subspace(stakingtypes.ModuleName)
@@ -166,7 +160,7 @@ func NewInitApp(
 	app.subspaces[slashingtypes.ModuleName] = app.paramsKeeper.Subspace(slashingtypes.ModuleName)
 
 	app.accountKeeper = authkeeper.NewAccountKeeper(
-		app.cdc,
+		app.enc.Marshaler,
 		keys[authtypes.StoreKey],
 		app.subspaces[authtypes.ModuleName],
 		authtypes.ProtoBaseAccount,
@@ -174,23 +168,15 @@ func NewInitApp(
 	)
 
 	app.bankKeeper = bankkeeper.NewBaseKeeper(
-		cdc,
+		app.enc.Marshaler,
 		keys[banktypes.StoreKey],
 		app.accountKeeper,
 		app.subspaces[banktypes.ModuleName],
 		app.BlockedAddrs(),
 	)
 
-	//app.supplyKeeper = supplykeeper.NewKeeper(
-	//	app.cdc,
-	//	keys[supply.StoreKey],
-	//	app.accountKeeper,
-	//	app.bankKeeper,
-	//	maccPerms,
-	//)
-
 	stakingKeeper := stakingkeeper.NewKeeper(
-		app.cdc,
+		app.enc.Marshaler,
 		keys[stakingtypes.StoreKey],
 		app.accountKeeper,
 		app.bankKeeper,
@@ -198,7 +184,7 @@ func NewInitApp(
 	)
 
 	app.distrKeeper = distrkeeper.NewKeeper(
-		app.cdc,
+		app.enc.Marshaler,
 		keys[distrtypes.StoreKey],
 		app.subspaces[distrtypes.ModuleName],
 		app.accountKeeper,
@@ -209,7 +195,7 @@ func NewInitApp(
 	)
 
 	app.slashingKeeper = slashingkeeper.NewKeeper(
-		app.cdc,
+		app.enc.Marshaler,
 		keys[slashingtypes.StoreKey],
 		&stakingKeeper,
 		app.subspaces[slashingtypes.ModuleName],
@@ -224,8 +210,8 @@ func NewInitApp(
 	app.pooltoyKeeper = pooltoy.NewKeeper(
 		app.bankKeeper,
 		app.accountKeeper,
-		app.cdc,
-		app.cdc.LegacyAmino,
+		app.enc.Marshaler,
+		app.enc.LegacyAmino,
 		keys[pooltoy.StoreKey],
 	)
 
@@ -235,23 +221,22 @@ func NewInitApp(
 		1,            // amount for mint
 		24*time.Hour, // rate limit by time
 		keys[faucet.StoreKey],
-		app.cdc,
+		app.enc.AminoCodec,
 	)
 
-	bankModule := bank.NewAppModule(cdc, app.bankKeeper, app.accountKeeper)
+	bankModule := bank.NewAppModule(app.enc.Marshaler, app.bankKeeper, app.accountKeeper)
 	restrictedBank := NewRestrictedBankModule(bankModule, app.bankKeeper, app.accountKeeper)
 
 	app.mm = module.NewManager(
-		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx, config.TxConfig),
-		auth.NewAppModule(cdc, app.accountKeeper, authsims.RandomGenesisAccounts),
-		// bank.NewAppModule(app.bankKeeper, app.accountKeeper),
+		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx, pooltoyconfig.TxConfig),
+		auth.NewAppModule(app.enc.Marshaler, app.accountKeeper, authsims.RandomGenesisAccounts),
 		restrictedBank,
-		distr.NewAppModule(cdc, app.distrKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
-		slashing.NewAppModule(cdc, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
+		distr.NewAppModule(app.enc.Marshaler, app.distrKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
+		slashing.NewAppModule(app.enc.Marshaler, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
 		pooltoy.NewAppModule(app.pooltoyKeeper, app.bankKeeper),
 		faucet.NewAppModule(app.faucetKeeper),
-		staking.NewAppModule(cdc, app.stakingKeeper, app.accountKeeper, app.bankKeeper),
-		slashing.NewAppModule(cdc, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
+		staking.NewAppModule(app.enc.Marshaler, app.stakingKeeper, app.accountKeeper, app.bankKeeper),
+		slashing.NewAppModule(app.enc.Marshaler, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
 	)
 
 	app.mm.SetOrderBeginBlockers(distrtypes.ModuleName, slashingtypes.ModuleName)
@@ -276,7 +261,7 @@ func NewInitApp(
 	app.SetAnteHandler(
 		ante.NewAnteHandler(
 			app.accountKeeper, app.bankKeeper, ante.DefaultSigVerificationGasConsumer,
-			config.TxConfig.SignModeHandler(),
+			pooltoyconfig.TxConfig.SignModeHandler(),
 		),
 	)
 
@@ -299,29 +284,29 @@ type GenesisState map[string]json.RawMessage
 //	return ModuleBasics.DefaultGenesis()
 //}
 
-func (app *NewApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
+func (app *PooltoyApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	//var genesisState simapp.GenesisState
 	var genesisState GenesisState
 
 	if err := tmjson.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
 		panic(err)
 	}
-	return app.mm.InitGenesis(ctx, app.cdc, genesisState)
+	return app.mm.InitGenesis(ctx, app.enc.Marshaler, genesisState)
 }
 
-func (app *NewApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *PooltoyApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	return app.mm.BeginBlock(ctx, req)
 }
 
-func (app *NewApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+func (app *PooltoyApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return app.mm.EndBlock(ctx, req)
 }
 
-func (app *NewApp) LoadHeight(height int64) error {
+func (app *PooltoyApp) LoadHeight(height int64) error {
 	return app.LoadVersion(height)
 }
 
-func (app *NewApp) ModuleAccountAddrs() map[string]bool {
+func (app *PooltoyApp) ModuleAccountAddrs() map[string]bool {
 	modAccAddrs := make(map[string]bool)
 	for acc := range maccPerms {
 		modAccAddrs[authtypes.NewModuleAddress(acc).String()] = true
@@ -330,25 +315,17 @@ func (app *NewApp) ModuleAccountAddrs() map[string]bool {
 	return modAccAddrs
 }
 
-func (app *NewApp) Codec() *codec.AminoCodec {
-	return app.cdc
+func (app *PooltoyApp) Codec() *codec.AminoCodec {
+	return app.enc.AminoCodec
 }
 
-func (app *NewApp) SimulationManager() *module.SimulationManager {
+func (app *PooltoyApp) SimulationManager() *module.SimulationManager {
 	return app.sm
-}
-
-func GetMaccPerms() map[string][]string {
-	modAccPerms := make(map[string][]string)
-	for k, v := range maccPerms {
-		modAccPerms[k] = v
-	}
-	return modAccPerms
 }
 
 // BlockedAddrs returns all the app's module account addresses that are not
 // allowed to receive external tokens.
-func (app *NewApp) BlockedAddrs() map[string]bool {
+func (app *PooltoyApp) BlockedAddrs() map[string]bool {
 	blockedAddrs := make(map[string]bool)
 	for acc := range maccPerms {
 		blockedAddrs[authtypes.NewModuleAddress(acc).String()] = !allowedReceivingModAcc[acc]
@@ -357,30 +334,44 @@ func (app *NewApp) BlockedAddrs() map[string]bool {
 	return blockedAddrs
 }
 
-// MakeTestEncodingConfig creates an EncodingConfig for testing.
-// This function should be used only internally (in the SDK).
-// App user should'nt create new codecs - use the app.AppCodec instead.
-// [DEPRECATED]
-func MakeTestEncodingConfig() simappparams.EncodingConfig {
-	encodingConfig := simappparams.MakeTestEncodingConfig()
-	std.RegisterLegacyAminoCodec(encodingConfig.Amino)
+func registerCodecsAndInterfaces(encodingConfig pooltoyparams.EncodingConfig) {
+	std.RegisterLegacyAminoCodec(encodingConfig.LegacyAmino)
 	std.RegisterInterfaces(encodingConfig.InterfaceRegistry)
-	ModuleBasics.RegisterLegacyAminoCodec(encodingConfig.Amino)
+	sdk.RegisterLegacyAminoCodec(encodingConfig.LegacyAmino)
+	sdk.RegisterInterfaces(encodingConfig.InterfaceRegistry)
+	codec.RegisterEvidences(encodingConfig.LegacyAmino)
+	ModuleBasics.RegisterLegacyAminoCodec(encodingConfig.LegacyAmino)
 	ModuleBasics.RegisterInterfaces(encodingConfig.InterfaceRegistry)
-	return encodingConfig
+}
+
+func MakeEncodingConfig() pooltoyparams.EncodingConfig {
+	cdc := codec.NewLegacyAmino()
+	interfaceRegistry := types.NewInterfaceRegistry()
+	marshaler := codec.NewProtoCodec(interfaceRegistry)
+
+	enc := pooltoyparams.EncodingConfig{
+		InterfaceRegistry: interfaceRegistry,
+		Marshaler:         marshaler,
+		TxConfig:          tx.NewTxConfig(marshaler, tx.DefaultSignModes),
+		LegacyAmino:       cdc,
+	}
+
+	registerCodecsAndInterfaces(enc)
+
+	return enc
 }
 
 // LegacyAmino returns SimApp's amino codec.
 //
 // NOTE: This is solely to be used for testing purposes as it may be desirable
 // for modules to register their own custom testing types.
-func (app *NewApp) LegacyAmino() *codec.LegacyAmino {
-	return app.cdc.LegacyAmino
+func (app *PooltoyApp) LegacyAmino() *codec.LegacyAmino {
+	return app.enc.LegacyAmino
 }
 
 // RegisterAPIRoutes registers all application module routes with the provided
 // API server.
-func (app *NewApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
+func (app *PooltoyApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
 	clientCtx := apiSvr.ClientCtx
 	rpc.RegisterRoutes(clientCtx, apiSvr.Router)
 	// Register legacy tx routes.
@@ -396,12 +387,12 @@ func (app *NewApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APICon
 
 	// register swagger API from root so that other applications can override easily
 	if apiConfig.Swagger {
-		RegisterSwaggerAPI(clientCtx, apiSvr.Router)
+		RegisterSwaggerAPI(apiSvr.Router)
 	}
 }
 
 // RegisterSwaggerAPI registers swagger route with API Server
-func RegisterSwaggerAPI(ctx client.Context, rtr *mux.Router) {
+func RegisterSwaggerAPI(rtr *mux.Router) {
 	statikFS, err := fs.New()
 	if err != nil {
 		panic(err)
@@ -412,11 +403,11 @@ func RegisterSwaggerAPI(ctx client.Context, rtr *mux.Router) {
 }
 
 // RegisterTxService implements the Application.RegisterTxService method.
-func (app *NewApp) RegisterTxService(clientCtx client.Context) {
+func (app *PooltoyApp) RegisterTxService(clientCtx client.Context) {
 	authtx.RegisterTxService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.BaseApp.Simulate, app.interfaceRegistry)
 }
 
 // RegisterTendermintService implements the Application.RegisterTendermintService method.
-func (app *NewApp) RegisterTendermintService(clientCtx client.Context) {
+func (app *PooltoyApp) RegisterTendermintService(clientCtx client.Context) {
 	tmservice.RegisterTendermintService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.interfaceRegistry)
 }
