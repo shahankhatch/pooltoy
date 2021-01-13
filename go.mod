@@ -1,8 +1,11 @@
 module github.com/interchainberlin/pooltoy
 
-go 1.13
+go 1.15
+
+//replace github.com/cosmos/cosmos-sdk => /Users/shahank/git_interchain/cosmos-sdk
 
 replace github.com/okwme/modules/incubator/faucet => /Users/shahank/git_interchain/faucet_modules/incubator/faucet
+replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
@@ -27,11 +30,8 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
 	github.com/tendermint/go-amino v0.16.0
-	github.com/tendermint/iavl v0.14.1 // indirect
 	github.com/tendermint/tendermint v0.34.1
 	github.com/tendermint/tm-db v0.6.3
-	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb // indirect
-	rsc.io/quote/v3 v3.1.0 // indirect
 )
 
 // replace github.com/okwme/modules/incubator/faucet => /Users/billy/GitHub.com/okwme/modules/incubator/faucet
