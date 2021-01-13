@@ -3,6 +3,7 @@ package main
 import (
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/cosmos/cosmos-sdk/x/crisis"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -53,7 +54,7 @@ func main() {
 	rootCmd.AddCommand(genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome))
 	rootCmd.AddCommand(genutilcli.MigrateGenesisCmd())
 	rootCmd.AddCommand(
-		genutilcli.GenTxCmd(app.ModuleBasics, app.MakeEncodingConfig().TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
+		genutilcli.GenTxCmd(app.ModuleBasics, cdc.TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
 	)
 	rootCmd.AddCommand(genutilcli.ValidateGenesisCmd(app.ModuleBasics))
 	rootCmd.AddCommand(AddGenesisAccountCmd(ctx, cdc.AminoCodec, app.DefaultNodeHome, app.DefaultCLIHome))
@@ -62,7 +63,7 @@ func main() {
 
 	encodingConfig := app.MakeEncodingConfig()
 	a := appCreator{encodingConfig}
-	server.AddCommands(rootCmd, app.DefaultNodeHome, a.newApp, a.appExport, nil)
+	server.AddCommands(rootCmd, app.DefaultNodeHome, a.newApp, a.appExport, addModuleInitFlags)
 
 	// prepare and add flags
 	executor := tmcli.PrepareBaseCmd(rootCmd, "AU", app.DefaultNodeHome)
@@ -110,4 +111,8 @@ func (a appCreator) appExport(
 	aApp := app.NewPooltoyApp(logger, db, traceStore, true, uint(1))
 
 	return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
+}
+
+func addModuleInitFlags(startCmd *cobra.Command) {
+	crisis.AddModuleInitFlags(startCmd)
 }

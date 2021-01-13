@@ -152,7 +152,7 @@ func NewPooltoyApp(
 		subspaces:      make(map[string]paramstypes.Subspace),
 	}
 
-	app.paramsKeeper = paramskeeper.NewKeeper(app.enc.Marshaler, app.enc.LegacyAmino, keys[paramstypes.StoreKey], tKeys[paramstypes.TStoreKey])
+	app.paramsKeeper = paramskeeper.NewKeeper(app.enc.Marshaler, app.enc.AminoCodec.LegacyAmino, keys[paramstypes.StoreKey], tKeys[paramstypes.TStoreKey])
 	app.subspaces[authtypes.ModuleName] = app.paramsKeeper.Subspace(authtypes.ModuleName)
 	app.subspaces[banktypes.ModuleName] = app.paramsKeeper.Subspace(banktypes.ModuleName)
 	app.subspaces[stakingtypes.ModuleName] = app.paramsKeeper.Subspace(stakingtypes.ModuleName)
@@ -211,7 +211,7 @@ func NewPooltoyApp(
 		app.bankKeeper,
 		app.accountKeeper,
 		app.enc.Marshaler,
-		app.enc.LegacyAmino,
+		app.enc.AminoCodec.LegacyAmino,
 		keys[pooltoy.StoreKey],
 	)
 
@@ -252,7 +252,7 @@ func NewPooltoyApp(
 		genutiltypes.ModuleName,
 	)
 
-	app.mm.RegisterRoutes(app.Router(), app.QueryRouter(), cdc.LegacyAmino)
+	app.mm.RegisterRoutes(app.Router(), app.QueryRouter(), cdc.AminoCodec.LegacyAmino)
 
 	app.SetInitChainer(app.InitChainer)
 	app.SetBeginBlocker(app.BeginBlocker)
@@ -335,25 +335,24 @@ func (app *PooltoyApp) BlockedAddrs() map[string]bool {
 }
 
 func registerCodecsAndInterfaces(encodingConfig pooltoyparams.EncodingConfig) {
-	std.RegisterLegacyAminoCodec(encodingConfig.LegacyAmino)
+	std.RegisterLegacyAminoCodec(encodingConfig.AminoCodec.LegacyAmino)
 	std.RegisterInterfaces(encodingConfig.InterfaceRegistry)
-	sdk.RegisterLegacyAminoCodec(encodingConfig.LegacyAmino)
-	sdk.RegisterInterfaces(encodingConfig.InterfaceRegistry)
-	codec.RegisterEvidences(encodingConfig.LegacyAmino)
-	ModuleBasics.RegisterLegacyAminoCodec(encodingConfig.LegacyAmino)
+	codec.RegisterEvidences(encodingConfig.AminoCodec.LegacyAmino)
+	ModuleBasics.RegisterLegacyAminoCodec(encodingConfig.AminoCodec.LegacyAmino)
 	ModuleBasics.RegisterInterfaces(encodingConfig.InterfaceRegistry)
 }
 
 func MakeEncodingConfig() pooltoyparams.EncodingConfig {
 	cdc := codec.NewLegacyAmino()
+	amino := codec.NewAminoCodec(cdc)
 	interfaceRegistry := types.NewInterfaceRegistry()
 	marshaler := codec.NewProtoCodec(interfaceRegistry)
 
 	enc := pooltoyparams.EncodingConfig{
+		AminoCodec:        amino,
 		InterfaceRegistry: interfaceRegistry,
 		Marshaler:         marshaler,
 		TxConfig:          tx.NewTxConfig(marshaler, tx.DefaultSignModes),
-		LegacyAmino:       cdc,
 	}
 
 	registerCodecsAndInterfaces(enc)
@@ -366,7 +365,7 @@ func MakeEncodingConfig() pooltoyparams.EncodingConfig {
 // NOTE: This is solely to be used for testing purposes as it may be desirable
 // for modules to register their own custom testing types.
 func (app *PooltoyApp) LegacyAmino() *codec.LegacyAmino {
-	return app.enc.LegacyAmino
+	return app.enc.AminoCodec.LegacyAmino
 }
 
 // RegisterAPIRoutes registers all application module routes with the provided
