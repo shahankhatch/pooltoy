@@ -63,8 +63,8 @@ func main() {
 	rootCmd.AddCommand(tmcli.NewCompletionCmd(rootCmd, true))
 	rootCmd.AddCommand(debug.Cmd())
 
-	a := appCreator{encodingConfig}
-	server.AddCommands(rootCmd, app.DefaultNodeHome, a.newApp, a.appExport, addModuleInitFlags)
+	appCreator := appCreator{encodingConfig}
+	server.AddCommands(rootCmd, app.DefaultNodeHome, appCreator.newApp, appCreator.appExport, appCreator.addModuleInitFlags)
 
 	// prepare and add flags
 	executor := tmcli.PrepareBaseCmd(rootCmd, "AU", app.DefaultNodeHome)
@@ -114,6 +114,6 @@ func (a appCreator) appExport(
 	return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
 }
 
-func addModuleInitFlags(startCmd *cobra.Command) {
+func (a appCreator) addModuleInitFlags(startCmd *cobra.Command) {
 	crisis.AddModuleInitFlags(startCmd)
 }
