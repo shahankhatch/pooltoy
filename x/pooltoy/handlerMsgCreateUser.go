@@ -5,11 +5,12 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"github.com/interchainberlin/pooltoy/x/pooltoy/types"
+	pooltoykeeper "github.com/interchainberlin/pooltoy/x/pooltoy/keeper"
+	pooltoytypes "github.com/interchainberlin/pooltoy/x/pooltoy/types"
 )
 
-func handleMsgCreateUser(ctx sdk.Context, k Keeper, msg MsgCreateUser) (*sdk.Result, error) {
-	var user = types.User{
+func handleMsgCreateUser(ctx sdk.Context, k pooltoykeeper.Keeper, msg pooltoytypes.MsgCreateUser) (*sdk.Result, error) {
+	var user = pooltoytypes.User{
 		Creator:     msg.Creator,
 		UserAccount: msg.UserAccount,
 		IsAdmin:     msg.IsAdmin,
@@ -22,8 +23,8 @@ func handleMsgCreateUser(ctx sdk.Context, k Keeper, msg MsgCreateUser) (*sdk.Res
 	if err != nil {
 		return nil, err
 	}
-	var allUsers []types.User
-	ModuleCdc.LegacyAmino.MustUnmarshalJSON(allUsersRaw, &allUsers)
+	var allUsers []pooltoytypes.User
+	pooltoytypes.ModuleCdc.LegacyAmino.MustUnmarshalJSON(allUsersRaw, &allUsers)
 
 	// does this creator have permission to create this new user?
 	// bare in mind special case allows create as initialization when there are no users yet

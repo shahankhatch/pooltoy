@@ -53,6 +53,8 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	pooltoyparams "github.com/interchainberlin/pooltoy/app/params"
 	"github.com/interchainberlin/pooltoy/x/pooltoy"
+	pooltoykeeper "github.com/interchainberlin/pooltoy/x/pooltoy/keeper"
+	pooltoytypes "github.com/interchainberlin/pooltoy/x/pooltoy/types"
 	"github.com/okwme/modules/incubator/faucet"
 )
 
@@ -105,7 +107,7 @@ type PooltoyApp struct {
 	slashingKeeper slashingkeeper.Keeper
 	distrKeeper    distrkeeper.Keeper
 	paramsKeeper   paramskeeper.Keeper
-	pooltoyKeeper  pooltoy.Keeper
+	pooltoyKeeper  pooltoykeeper.Keeper
 	faucetKeeper   faucet.Keeper
 
 	mm *module.Manager
@@ -133,7 +135,7 @@ func NewPooltoyApp(
 		distrtypes.StoreKey,
 		slashingtypes.StoreKey,
 		paramstypes.StoreKey,
-		pooltoy.StoreKey,
+		pooltoytypes.StoreKey,
 		faucet.StoreKey,
 	)
 
@@ -211,12 +213,13 @@ func NewPooltoyApp(
 			app.slashingKeeper.Hooks()),
 	)
 
-	app.pooltoyKeeper = pooltoy.NewKeeper(
+	app.pooltoyKeeper = pooltoykeeper.NewKeeper(
 		app.bankKeeper,
 		app.accountKeeper,
 		app.config.Marshaler,
 		app.config.AminoCodec.LegacyAmino,
-		keys[pooltoy.StoreKey],
+		keys[pooltoytypes.StoreKey],
+		app.subspaces[slashingtypes.ModuleName],
 	)
 
 	app.faucetKeeper = faucet.NewKeeper(
@@ -252,7 +255,7 @@ func NewPooltoyApp(
 		authtypes.ModuleName,
 		banktypes.ModuleName,
 		slashingtypes.ModuleName,
-		pooltoy.ModuleName,
+		pooltoytypes.ModuleName,
 		genutiltypes.ModuleName,
 	)
 

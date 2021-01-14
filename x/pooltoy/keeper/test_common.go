@@ -32,13 +32,10 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/params"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
-	//"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	//"github.com/cosmos/cosmos-sdk/x/supply"
 	"github.com/interchainberlin/pooltoy/x/pooltoy/types"
 	"github.com/okwme/modules/incubator/faucet"
 
-	//abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tendermintdbm "github.com/tendermint/tm-db"
@@ -98,7 +95,7 @@ func CreateTestKeepers(t *testing.T) (Keeper, sdk.Context, bankkeeper.Keeper, au
 
 	bankKeeper := bankkeeper.NewBaseKeeper(marshaler, keys[banktypes.StoreKey], accountKeeper, paramsKeeper.Subspace(banktypes.ModuleName), BlockedAccountAddrs())
 
-	keeper := NewKeeper(bankKeeper, accountKeeper, marshaler, cdc.LegacyAmino, keyUser)
+	keeper := NewKeeper(bankKeeper, accountKeeper, marshaler, cdc.LegacyAmino, keyUser, paramsKeeper.Subspace(types.ModuleName))
 
 	return keeper, ctx, bankKeeper, accountKeeper
 }

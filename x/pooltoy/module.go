@@ -1,13 +1,13 @@
 package pooltoy
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/cosmos/cosmos-sdk/client"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
-	//"github.com/cosmos/cosmos-sdk/client/context"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 
 	"github.com/gorilla/mux"
@@ -15,12 +15,14 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
-	//"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	//"github.com/cosmos/cosmos-sdk/x/bank"
 	"github.com/interchainberlin/pooltoy/x/pooltoy/client/cli"
 	"github.com/interchainberlin/pooltoy/x/pooltoy/client/rest"
+	pooltoykeeper "github.com/interchainberlin/pooltoy/x/pooltoy/keeper"
+	pooltoytypes "github.com/interchainberlin/pooltoy/x/pooltoy/types"
+
+	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 )
 
 // Type check to ensure the interface is properly implemented
@@ -34,28 +36,28 @@ type AppModuleBasic struct{}
 
 // Name returns the pooltoy module's name.
 func (AppModuleBasic) Name() string {
-	return ModuleName
+	return pooltoytypes.ModuleName
 }
 
 // RegisterCodec registers the pooltoy module's types for the given codec.
 func (AppModuleBasic) RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
-	RegisterCodec(codec.NewAminoCodec(cdc))
+	pooltoytypes.RegisterCodec(codec.NewAminoCodec(cdc))
 }
 
 // DefaultGenesis returns default genesis state as raw bytes for the pooltoy
 // module.
 func (AppModuleBasic) DefaultGenesis(cdc codec.JSONMarshaler) json.RawMessage {
-	return ModuleCdc.LegacyAmino.MustMarshalJSON(DefaultGenesisState())
+	return pooltoytypes.ModuleCdc.LegacyAmino.MustMarshalJSON(pooltoytypes.DefaultGenesisState())
 }
 
 // ValidateGenesis performs genesis state validation for the pooltoy module.
 func (AppModuleBasic) ValidateGenesis(cdc codec.JSONMarshaler, config client.TxEncodingConfig, bz json.RawMessage) error {
-	var data GenesisState
-	err := ModuleCdc.LegacyAmino.UnmarshalJSON(bz, &data)
+	var data pooltoytypes.GenesisState
+	err := pooltoytypes.ModuleCdc.LegacyAmino.UnmarshalJSON(bz, &data)
 	if err != nil {
 		return err
 	}
-	return ValidateGenesis(data)
+	return pooltoytypes.ValidateGenesis(data)
 }
 
 // RegisterRESTRoutes registers the REST routes for the pooltoy module.
@@ -65,12 +67,12 @@ func (AppModuleBasic) RegisterRESTRoutes(ctx client.Context, rtr *mux.Router) {
 
 // GetTxCmd returns the root tx command for the pooltoy module.
 func (AppModuleBasic) GetTxCmd() *cobra.Command {
-	return cli.GetTxCmd(ModuleCdc)
+	return cli.GetTxCmd(pooltoytypes.ModuleCdc)
 }
 
 // GetQueryCmd returns no root query command for the pooltoy module.
-func (a AppModuleBasic) GetQueryCmd() *cobra.Command {
-	return cli.GetQueryCmd(StoreKey, ModuleCdc)
+func (AppModuleBasic) GetQueryCmd() *cobra.Command {
+	return cli.GetQueryCmd(pooltoytypes.StoreKey, pooltoytypes.ModuleCdc)
 }
 
 //____________________________________________________________________________
@@ -79,14 +81,14 @@ func (a AppModuleBasic) GetQueryCmd() *cobra.Command {
 type AppModule struct {
 	AppModuleBasic
 
-	keeper     Keeper
+	keeper     pooltoykeeper.Keeper
 	coinKeeper bankkeeper.Keeper
 	// TODO: Add keepers that your application depends on
 
 }
 
 // NewAppModule creates a new AppModule object
-func NewAppModule(k Keeper, bankKeeper bankkeeper.Keeper) AppModule {
+func NewAppModule(k pooltoykeeper.Keeper, bankKeeper bankkeeper.Keeper) AppModule {
 	return AppModule{
 		AppModuleBasic: AppModuleBasic{},
 		keeper:         k,
@@ -97,11 +99,11 @@ func NewAppModule(k Keeper, bankKeeper bankkeeper.Keeper) AppModule {
 
 // Name returns the pooltoy module's name.
 func (AppModule) Name() string {
-	return ModuleName
+	return pooltoytypes.ModuleName
 }
 
 // RegisterInvariants registers the pooltoy module invariants.
-func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
+func (AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 
 // Route returns the message routing key for the pooltoy module.
 //func (AppModule) Route() string {
@@ -118,19 +120,19 @@ func (am AppModule) NewHandler() sdk.Handler {
 
 // QuerierRoute returns the pooltoy module's querier route name.
 func (AppModule) QuerierRoute() string {
-	return QuerierRoute
+	return pooltoytypes.QuerierRoute
 }
 
 // NewQuerierHandler returns the pooltoy module sdk.Querier.
 func (am AppModule) NewQuerierHandler() sdk.Querier {
-	return NewQuerier(am.keeper)
+	return pooltoykeeper.NewQuerier(am.keeper)
 }
 
 // InitGenesis performs genesis initialization for the pooltoy module. It returns
 // no validator updates.
 func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONMarshaler, data json.RawMessage) []abci.ValidatorUpdate {
-	var genesisState GenesisState
-	ModuleCdc.LegacyAmino.MustUnmarshalJSON(data, &genesisState)
+	var genesisState pooltoytypes.GenesisState
+	pooltoytypes.ModuleCdc.LegacyAmino.MustUnmarshalJSON(data, &genesisState)
 	InitGenesis(ctx, am.keeper, genesisState)
 	return []abci.ValidatorUpdate{}
 }
@@ -139,12 +141,11 @@ func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONMarshaler, data j
 // module.
 func (am AppModule) ExportGenesis(ctx sdk.Context, cdc codec.JSONMarshaler) json.RawMessage {
 	gs := ExportGenesis(ctx, am.keeper)
-	return ModuleCdc.LegacyAmino.MustMarshalJSON(gs)
+	return pooltoytypes.ModuleCdc.LegacyAmino.MustMarshalJSON(gs)
 }
 
 // BeginBlock returns the begin blocker for the pooltoy module.
 func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
-	BeginBlocker(ctx, req, am.keeper)
 }
 
 // EndBlock returns the end blocker for the pooltoy module. It returns no validator
@@ -154,12 +155,11 @@ func (AppModule) EndBlock(_ sdk.Context, _ abci.RequestEndBlock) []abci.Validato
 }
 
 // RegisterInterfaces registers the module's interface types
-func (b AppModuleBasic) RegisterInterfaces(_ codectypes.InterfaceRegistry) {}
+func (AppModuleBasic) RegisterInterfaces(_ codectypes.InterfaceRegistry) {}
 
 // RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the mint module.
 func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
-	//types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx))
-
+	tmservice.RegisterServiceHandlerClient(context.Background(), mux, tmservice.NewServiceClient(clientCtx))
 }
 
 // LegacyQuerierHandler returns the mint module sdk.Querier.

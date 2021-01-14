@@ -3,14 +3,12 @@ package keeper
 import (
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/codec"
+	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	//"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	//"github.com/cosmos/cosmos-sdk/x/auth"
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
-	//"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	"github.com/interchainberlin/pooltoy/x/pooltoy/types"
 )
@@ -21,17 +19,22 @@ type Keeper struct {
 	accountKeeper authkeeper.AccountKeeper
 	storeKey      sdk.StoreKey
 	Cdc           *codec.AminoCodec
-	// paramspace types.ParamSubspace
+
+	// The codec codec for binary encoding/decoding.
+	cdc codec.BinaryMarshaler
+
+	paramspace paramtypes.Subspace
 }
 
 // NewKeeper creates a pooltoy keeper
-func NewKeeper(coinKeeper bankkeeper.Keeper, accountKeeper authkeeper.AccountKeeper, cdc codec.BinaryMarshaler, legacyAmino *codec.LegacyAmino, key sdk.StoreKey) Keeper {
+func NewKeeper(coinKeeper bankkeeper.Keeper, accountKeeper authkeeper.AccountKeeper, cdc codec.BinaryMarshaler, legacyAmino *codec.LegacyAmino, key sdk.StoreKey, paramspace paramtypes.Subspace) Keeper {
 	keeper := Keeper{
 		CoinKeeper:    coinKeeper,
 		accountKeeper: accountKeeper,
 		storeKey:      key,
-		//Cdc:           cdc,
-		// paramspace: paramspace.WithKeyTable(types.ParamKeyTable()),
+		cdc:           cdc,
+		Cdc:           codec.NewAminoCodec(legacyAmino),
+		paramspace:    paramspace.WithKeyTable(types.ParamKeyTable()),
 	}
 	return keeper
 }
