@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const TypeMsgUser = "msg_create_user"
+
 var _ sdk.Msg = &MsgCreateUser{}
 
 type MsgCreateUser struct {
@@ -17,17 +19,15 @@ type MsgCreateUser struct {
 	Email       string         `json:"email" yaml:"email"`
 }
 
-func (msg MsgCreateUser) Reset() {
-	panic("implement me")
+func (msg *MsgCreateUser) Reset() {
+	*msg = MsgCreateUser{}
 }
 
-func (msg MsgCreateUser) String() string {
-	panic("implement me")
+func (msg *MsgCreateUser) String() string {
+	return TypeMsgUser
 }
 
-func (msg MsgCreateUser) ProtoMessage() {
-	panic("implement me")
-}
+func (msg MsgCreateUser) ProtoMessage() {}
 
 func NewMsgCreateUser(creator sdk.AccAddress, userAccount sdk.AccAddress, isAdmin bool, name string, email string) MsgCreateUser {
 	return MsgCreateUser{
@@ -40,24 +40,24 @@ func NewMsgCreateUser(creator sdk.AccAddress, userAccount sdk.AccAddress, isAdmi
 	}
 }
 
-func (msg MsgCreateUser) Route() string {
+func (msg *MsgCreateUser) Route() string {
 	return RouterKey
 }
 
-func (msg MsgCreateUser) Type() string {
+func (msg *MsgCreateUser) Type() string {
 	return "CreateUser"
 }
 
-func (msg MsgCreateUser) GetSigners() []sdk.AccAddress {
-	return []sdk.AccAddress{sdk.AccAddress(msg.Creator)}
+func (msg *MsgCreateUser) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.Creator}
 }
 
-func (msg MsgCreateUser) GetSignBytes() []byte {
+func (msg *MsgCreateUser) GetSignBytes() []byte {
 	bz := ModuleCdc.MustMarshalJSON(msg)
 	return sdk.MustSortJSON(bz)
 }
 
-func (msg MsgCreateUser) ValidateBasic() error {
+func (msg *MsgCreateUser) ValidateBasic() error {
 	if msg.Creator.Empty() {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "creator can't be empty")
 	}

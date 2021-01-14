@@ -45,6 +45,6 @@ func createUserHandler(cliCtx client.Context) http.HandlerFunc {
 		isAdmin := false
 
 		msg := types.NewMsgCreateUser(creator, userAccount, isAdmin, req.Name, req.Email)
-		tx.WriteGeneratedTxResponse(cliCtx, w, baseReq, msg)
+		tx.WriteGeneratedTxResponse(cliCtx, w, baseReq, &msg)
 	}
 }
