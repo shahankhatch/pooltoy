@@ -29,7 +29,7 @@ const flagInvCheckPeriod = "inv-check-period"
 var invCheckPeriod uint
 
 func main() {
-	cdc := pooltoyparams.MakeConfig()
+	encodingConfig := app.MakeEncodingConfig()
 
 	newDnmRegex := `[\x{1F600}-\x{1F6FF}]`
 	sdk.SetCoinDenomRegex(func() string {
@@ -40,6 +40,8 @@ func main() {
 	config.SetBech32PrefixForAccount(sdk.Bech32PrefixAccAddr, sdk.Bech32PrefixAccPub)
 	config.SetBech32PrefixForValidator(sdk.Bech32PrefixValAddr, sdk.Bech32PrefixValPub)
 	config.SetBech32PrefixForConsensusNode(sdk.Bech32PrefixConsAddr, sdk.Bech32PrefixConsPub)
+	//config.SetCoinType(sdk.CoinType)
+	//config.SetFullFundraiserPath(sdk.FullFundraiserPath)
 	config.Seal()
 
 	ctx := server.NewDefaultContext()
@@ -54,14 +56,13 @@ func main() {
 	rootCmd.AddCommand(genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome))
 	rootCmd.AddCommand(genutilcli.MigrateGenesisCmd())
 	rootCmd.AddCommand(
-		genutilcli.GenTxCmd(app.ModuleBasics, cdc.TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
+		genutilcli.GenTxCmd(app.ModuleBasics, encodingConfig.TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
 	)
 	rootCmd.AddCommand(genutilcli.ValidateGenesisCmd(app.ModuleBasics))
-	rootCmd.AddCommand(AddGenesisAccountCmd(ctx, cdc.AminoCodec, app.DefaultNodeHome, app.DefaultCLIHome))
+	rootCmd.AddCommand(AddGenesisAccountCmd(ctx, encodingConfig.AminoCodec, app.DefaultNodeHome, app.DefaultCLIHome))
 	rootCmd.AddCommand(tmcli.NewCompletionCmd(rootCmd, true))
 	rootCmd.AddCommand(debug.Cmd())
 
-	encodingConfig := app.MakeEncodingConfig()
 	a := appCreator{encodingConfig}
 	server.AddCommands(rootCmd, app.DefaultNodeHome, a.newApp, a.appExport, addModuleInitFlags)
 
