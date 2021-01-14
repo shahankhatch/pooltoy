@@ -4,7 +4,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-const TypeMsgUser = "msg_user"
+//const TypeMsgUser = "msg_user"
 
 //var _ sdk.Msg = &User{}
 
