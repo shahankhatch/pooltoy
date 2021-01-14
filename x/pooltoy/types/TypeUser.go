@@ -2,7 +2,10 @@ package types
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/gogo/protobuf/proto"
 )
+
+const TypeMsgUser = "msg_user"
 
 var _ sdk.Msg = &User{}
 
@@ -15,34 +18,32 @@ type User struct {
 	Email       string         `json:"email" yaml:"email"`
 }
 
-func (u User) Reset() {
-	panic("implement me")
+func (u *User) Reset() {
+	*u = User{}
 }
 
-func (u User) String() string {
-	panic("implement me")
+func (u *User) String() string {
+	return proto.CompactTextString(u)
 }
 
-func (u User) ProtoMessage() {
-	panic("implement me")
+func (u *User) ProtoMessage() {}
+
+func (u *User) Route() string {
+	return RouterKey
 }
 
-func (u User) Route() string {
-	panic("implement me")
+func (u *User) Type() string {
+	return TypeMsgUser
 }
 
-func (u User) Type() string {
-	panic("implement me")
+func (u *User) ValidateBasic() error {
+	return nil
 }
 
-func (u User) ValidateBasic() error {
-	panic("implement me")
+func (u *User) GetSignBytes() []byte {
+	return sdk.MustSortJSON(Cdc.MustMarshalJSON(&u))
 }
 
-func (u User) GetSignBytes() []byte {
-	panic("implement me")
-}
-
-func (u User) GetSigners() []sdk.AccAddress {
-	panic("implement me")
+func (u *User) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{u.UserAccount}
 }
