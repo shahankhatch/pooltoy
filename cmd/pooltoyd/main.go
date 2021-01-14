@@ -4,6 +4,7 @@ import (
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
+	pooltoyparams "github.com/interchainberlin/pooltoy/app/params"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -21,7 +22,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 	"github.com/interchainberlin/pooltoy/app"
-	pooltoyparams "github.com/interchainberlin/pooltoy/params"
 )
 
 const flagInvCheckPeriod = "inv-check-period"
@@ -29,7 +29,7 @@ const flagInvCheckPeriod = "inv-check-period"
 var invCheckPeriod uint
 
 func main() {
-	cdc := app.MakeEncodingConfig()
+	cdc := pooltoyparams.MakeConfig()
 
 	newDnmRegex := `[\x{1F600}-\x{1F6FF}]`
 	sdk.SetCoinDenomRegex(func() string {
@@ -87,7 +87,7 @@ func (a appCreator) newApp(logger log.Logger, db dbm.DB, traceStore io.Writer, a
 	}
 
 	return app.NewPooltoyApp(
-		logger, db, traceStore, true, invCheckPeriod,
+		logger, db, traceStore, true, invCheckPeriod, pooltoyparams.MakeConfig(),
 		baseapp.SetPruning(storeTypes.NewPruningOptionsFromString(viper.GetString("pruning"))),
 		baseapp.SetMinGasPrices(viper.GetString(server.FlagMinGasPrices)),
 		baseapp.SetHaltHeight(viper.GetUint64(server.FlagHaltHeight)),
@@ -100,7 +100,7 @@ func (a appCreator) appExport(
 	logger log.Logger, db dbm.DB, traceStore io.Writer, height int64, forZeroHeight bool, jailWhiteList []string, appOpts servertypes.AppOptions) (servertypes.ExportedApp, error) {
 
 	if height != -1 {
-		aApp := app.NewPooltoyApp(logger, db, traceStore, false, uint(1))
+		aApp := app.NewPooltoyApp(logger, db, traceStore, false, uint(1), app.MakeEncodingConfig())
 		err := aApp.LoadHeight(height)
 		if err != nil {
 			return servertypes.ExportedApp{}, err
@@ -108,7 +108,7 @@ func (a appCreator) appExport(
 		return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
 	}
 
-	aApp := app.NewPooltoyApp(logger, db, traceStore, true, uint(1))
+	aApp := app.NewPooltoyApp(logger, db, traceStore, true, uint(1), app.MakeEncodingConfig())
 
 	return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
 }

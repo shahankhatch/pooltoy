@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/interchainberlin/pooltoy/app/params"
 	"os"
 	"path"
 
@@ -32,7 +33,7 @@ func main() {
 	cobra.EnableCommandSorting = false
 
 	// Instantiate the codec for the command line application
-	cdc := app.MakeEncodingConfig()
+	cdc := params.MakeConfig()
 
 	// Read in the configuration file for the sdk
 	config := sdk.GetConfig()

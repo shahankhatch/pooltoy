@@ -5,11 +5,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/cosmos/cosmos-sdk/client/rpc"
-	"github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/server/api"
 	"github.com/cosmos/cosmos-sdk/server/config"
 	"github.com/cosmos/cosmos-sdk/simapp"
-	"github.com/cosmos/cosmos-sdk/std"
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authrest "github.com/cosmos/cosmos-sdk/x/auth/client/rest"
 	authsims "github.com/cosmos/cosmos-sdk/x/auth/simulation"
@@ -39,7 +37,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/version"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
-	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
@@ -54,7 +51,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	pooltoyparams "github.com/interchainberlin/pooltoy/params"
+	pooltoyparams "github.com/interchainberlin/pooltoy/app/params"
 	"github.com/interchainberlin/pooltoy/x/pooltoy"
 	"github.com/okwme/modules/incubator/faucet"
 )
@@ -92,14 +89,8 @@ var (
 
 type PooltoyApp struct {
 	*bam.BaseApp
-	//cdc *codec.AminoCodec
 
-	//legacyAmino *codec.LegacyAmino
-	//appCodec    codec.Marshaler
-
-	enc pooltoyparams.EncodingConfig
-
-	interfaceRegistry types.InterfaceRegistry
+	config pooltoyparams.EncodingConfig
 
 	invCheckPeriod uint
 
@@ -129,30 +120,43 @@ var (
 
 func NewPooltoyApp(
 	logger log.Logger, db dbm.DB, traceStore io.Writer, loadLatest bool,
-	invCheckPeriod uint, baseAppOptions ...func(*bam.BaseApp),
+	invCheckPeriod uint, pooltoyconfig pooltoyparams.EncodingConfig, baseAppOptions ...func(*bam.BaseApp),
 ) *PooltoyApp {
-	cdc := MakeEncodingConfig()
 
-	pooltoyconfig := MakeEncodingConfig()
 	bApp := bam.NewBaseApp(appName, logger, db, pooltoyconfig.TxConfig.TxDecoder(), baseAppOptions...)
 	bApp.SetCommitMultiStoreTracer(traceStore)
 	bApp.SetAppVersion(version.Version)
 
-	keys := sdk.NewKVStoreKeys(authtypes.StoreKey, stakingtypes.StoreKey,
-		distrtypes.StoreKey, slashingtypes.StoreKey, paramstypes.StoreKey, pooltoy.StoreKey, faucet.StoreKey)
+	keys := sdk.NewKVStoreKeys(
+		authtypes.StoreKey,
+		stakingtypes.StoreKey,
+		distrtypes.StoreKey,
+		slashingtypes.StoreKey,
+		paramstypes.StoreKey,
+		pooltoy.StoreKey,
+		faucet.StoreKey,
+	)
 
-	tKeys := sdk.NewTransientStoreKeys(paramstypes.TStoreKey)
+	tKeys := sdk.NewTransientStoreKeys(
+		paramstypes.TStoreKey,
+	)
 
 	var app = &PooltoyApp{
 		BaseApp:        bApp,
-		enc:            cdc,
+		config:         pooltoyconfig,
 		invCheckPeriod: invCheckPeriod,
 		keys:           keys,
 		tKeys:          tKeys,
 		subspaces:      make(map[string]paramstypes.Subspace),
 	}
 
-	app.paramsKeeper = paramskeeper.NewKeeper(app.enc.Marshaler, app.enc.AminoCodec.LegacyAmino, keys[paramstypes.StoreKey], tKeys[paramstypes.TStoreKey])
+	app.paramsKeeper = paramskeeper.NewKeeper(
+		app.config.Marshaler,
+		app.config.AminoCodec.LegacyAmino,
+		keys[paramstypes.StoreKey],
+		tKeys[paramstypes.TStoreKey],
+	)
+
 	app.subspaces[authtypes.ModuleName] = app.paramsKeeper.Subspace(authtypes.ModuleName)
 	app.subspaces[banktypes.ModuleName] = app.paramsKeeper.Subspace(banktypes.ModuleName)
 	app.subspaces[stakingtypes.ModuleName] = app.paramsKeeper.Subspace(stakingtypes.ModuleName)
@@ -160,7 +164,7 @@ func NewPooltoyApp(
 	app.subspaces[slashingtypes.ModuleName] = app.paramsKeeper.Subspace(slashingtypes.ModuleName)
 
 	app.accountKeeper = authkeeper.NewAccountKeeper(
-		app.enc.Marshaler,
+		app.config.Marshaler,
 		keys[authtypes.StoreKey],
 		app.subspaces[authtypes.ModuleName],
 		authtypes.ProtoBaseAccount,
@@ -168,7 +172,7 @@ func NewPooltoyApp(
 	)
 
 	app.bankKeeper = bankkeeper.NewBaseKeeper(
-		app.enc.Marshaler,
+		app.config.Marshaler,
 		keys[banktypes.StoreKey],
 		app.accountKeeper,
 		app.subspaces[banktypes.ModuleName],
@@ -176,7 +180,7 @@ func NewPooltoyApp(
 	)
 
 	stakingKeeper := stakingkeeper.NewKeeper(
-		app.enc.Marshaler,
+		app.config.Marshaler,
 		keys[stakingtypes.StoreKey],
 		app.accountKeeper,
 		app.bankKeeper,
@@ -184,7 +188,7 @@ func NewPooltoyApp(
 	)
 
 	app.distrKeeper = distrkeeper.NewKeeper(
-		app.enc.Marshaler,
+		app.config.Marshaler,
 		keys[distrtypes.StoreKey],
 		app.subspaces[distrtypes.ModuleName],
 		app.accountKeeper,
@@ -195,7 +199,7 @@ func NewPooltoyApp(
 	)
 
 	app.slashingKeeper = slashingkeeper.NewKeeper(
-		app.enc.Marshaler,
+		app.config.Marshaler,
 		keys[slashingtypes.StoreKey],
 		&stakingKeeper,
 		app.subspaces[slashingtypes.ModuleName],
@@ -210,8 +214,8 @@ func NewPooltoyApp(
 	app.pooltoyKeeper = pooltoy.NewKeeper(
 		app.bankKeeper,
 		app.accountKeeper,
-		app.enc.Marshaler,
-		app.enc.AminoCodec.LegacyAmino,
+		app.config.Marshaler,
+		app.config.AminoCodec.LegacyAmino,
 		keys[pooltoy.StoreKey],
 	)
 
@@ -221,22 +225,22 @@ func NewPooltoyApp(
 		1,            // amount for mint
 		24*time.Hour, // rate limit by time
 		keys[faucet.StoreKey],
-		app.enc.AminoCodec,
+		app.config.AminoCodec,
 	)
 
-	bankModule := bank.NewAppModule(app.enc.Marshaler, app.bankKeeper, app.accountKeeper)
+	bankModule := bank.NewAppModule(app.config.Marshaler, app.bankKeeper, app.accountKeeper)
 	restrictedBank := NewRestrictedBankModule(bankModule, app.bankKeeper, app.accountKeeper)
 
 	app.mm = module.NewManager(
 		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx, pooltoyconfig.TxConfig),
-		auth.NewAppModule(app.enc.Marshaler, app.accountKeeper, authsims.RandomGenesisAccounts),
+		auth.NewAppModule(app.config.Marshaler, app.accountKeeper, authsims.RandomGenesisAccounts),
 		restrictedBank,
-		distr.NewAppModule(app.enc.Marshaler, app.distrKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
-		slashing.NewAppModule(app.enc.Marshaler, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
+		distr.NewAppModule(app.config.Marshaler, app.distrKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
+		slashing.NewAppModule(app.config.Marshaler, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
 		pooltoy.NewAppModule(app.pooltoyKeeper, app.bankKeeper),
 		faucet.NewAppModule(app.faucetKeeper),
-		staking.NewAppModule(app.enc.Marshaler, app.stakingKeeper, app.accountKeeper, app.bankKeeper),
-		slashing.NewAppModule(app.enc.Marshaler, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
+		staking.NewAppModule(app.config.Marshaler, app.stakingKeeper, app.accountKeeper, app.bankKeeper),
+		slashing.NewAppModule(app.config.Marshaler, app.slashingKeeper, app.accountKeeper, app.bankKeeper, app.stakingKeeper),
 	)
 
 	app.mm.SetOrderBeginBlockers(distrtypes.ModuleName, slashingtypes.ModuleName)
@@ -252,7 +256,7 @@ func NewPooltoyApp(
 		genutiltypes.ModuleName,
 	)
 
-	app.mm.RegisterRoutes(app.Router(), app.QueryRouter(), cdc.AminoCodec.LegacyAmino)
+	app.mm.RegisterRoutes(app.Router(), app.QueryRouter(), pooltoyconfig.AminoCodec.LegacyAmino)
 
 	app.SetInitChainer(app.InitChainer)
 	app.SetBeginBlocker(app.BeginBlocker)
@@ -291,7 +295,7 @@ func (app *PooltoyApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) a
 	if err := tmjson.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
 		panic(err)
 	}
-	return app.mm.InitGenesis(ctx, app.enc.Marshaler, genesisState)
+	return app.mm.InitGenesis(ctx, app.config.Marshaler, genesisState)
 }
 
 func (app *PooltoyApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
@@ -316,7 +320,7 @@ func (app *PooltoyApp) ModuleAccountAddrs() map[string]bool {
 }
 
 func (app *PooltoyApp) Codec() *codec.AminoCodec {
-	return app.enc.AminoCodec
+	return app.config.AminoCodec
 }
 
 func (app *PooltoyApp) SimulationManager() *module.SimulationManager {
@@ -334,38 +338,12 @@ func (app *PooltoyApp) BlockedAddrs() map[string]bool {
 	return blockedAddrs
 }
 
-func registerCodecsAndInterfaces(encodingConfig pooltoyparams.EncodingConfig) {
-	std.RegisterLegacyAminoCodec(encodingConfig.AminoCodec.LegacyAmino)
-	std.RegisterInterfaces(encodingConfig.InterfaceRegistry)
-	codec.RegisterEvidences(encodingConfig.AminoCodec.LegacyAmino)
-	ModuleBasics.RegisterLegacyAminoCodec(encodingConfig.AminoCodec.LegacyAmino)
-	ModuleBasics.RegisterInterfaces(encodingConfig.InterfaceRegistry)
-}
-
-func MakeEncodingConfig() pooltoyparams.EncodingConfig {
-	cdc := codec.NewLegacyAmino()
-	amino := codec.NewAminoCodec(cdc)
-	interfaceRegistry := types.NewInterfaceRegistry()
-	marshaler := codec.NewProtoCodec(interfaceRegistry)
-
-	enc := pooltoyparams.EncodingConfig{
-		AminoCodec:        amino,
-		InterfaceRegistry: interfaceRegistry,
-		Marshaler:         marshaler,
-		TxConfig:          tx.NewTxConfig(marshaler, tx.DefaultSignModes),
-	}
-
-	registerCodecsAndInterfaces(enc)
-
-	return enc
-}
-
 // LegacyAmino returns SimApp's amino codec.
 //
 // NOTE: This is solely to be used for testing purposes as it may be desirable
 // for modules to register their own custom testing types.
 func (app *PooltoyApp) LegacyAmino() *codec.LegacyAmino {
-	return app.enc.AminoCodec.LegacyAmino
+	return app.config.AminoCodec.LegacyAmino
 }
 
 // RegisterAPIRoutes registers all application module routes with the provided
@@ -403,10 +381,10 @@ func RegisterSwaggerAPI(rtr *mux.Router) {
 
 // RegisterTxService implements the Application.RegisterTxService method.
 func (app *PooltoyApp) RegisterTxService(clientCtx client.Context) {
-	authtx.RegisterTxService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.BaseApp.Simulate, app.interfaceRegistry)
+	authtx.RegisterTxService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.BaseApp.Simulate, app.config.InterfaceRegistry)
 }
 
 // RegisterTendermintService implements the Application.RegisterTendermintService method.
 func (app *PooltoyApp) RegisterTendermintService(clientCtx client.Context) {
-	tmservice.RegisterTendermintService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.interfaceRegistry)
+	tmservice.RegisterTendermintService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.config.InterfaceRegistry)
 }

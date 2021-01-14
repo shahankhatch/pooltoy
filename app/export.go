@@ -35,7 +35,7 @@ func (app *PooltoyApp) ExportAppStateAndValidators(
 		app.prepForZeroHeightGenesis(ctx, jailAllowedAddrs)
 	}
 
-	genState := app.mm.ExportGenesis(ctx, app.enc.AminoCodec)
+	genState := app.mm.ExportGenesis(ctx, app.config.AminoCodec)
 	appState, err := json.MarshalIndent(genState, "", "  ")
 	if err != nil {
 		return servertypes.ExportedApp{}, err
