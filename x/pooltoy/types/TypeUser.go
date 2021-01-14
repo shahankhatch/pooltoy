@@ -2,12 +2,11 @@ package types
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/gogo/protobuf/proto"
 )
 
 const TypeMsgUser = "msg_user"
 
-var _ sdk.Msg = &User{}
+//var _ sdk.Msg = &User{}
 
 type User struct {
 	Creator     sdk.AccAddress `json:"creator" yaml:"creator"`
@@ -18,32 +17,33 @@ type User struct {
 	Email       string         `json:"email" yaml:"email"`
 }
 
-func (u *User) Reset() {
-	*u = User{}
-}
-
-func (u *User) String() string {
-	return proto.CompactTextString(u)
-}
-
-func (u *User) ProtoMessage() {}
-
-func (u *User) Route() string {
-	return RouterKey
-}
-
-func (u *User) Type() string {
-	return TypeMsgUser
-}
-
-func (u *User) ValidateBasic() error {
-	return nil
-}
-
-func (u *User) GetSignBytes() []byte {
-	return sdk.MustSortJSON(Cdc.MustMarshalJSON(&u))
-}
-
-func (u *User) GetSigners() []sdk.AccAddress {
-	return []sdk.AccAddress{u.UserAccount}
-}
+//
+//func (u *User) Reset() {
+//	*u = User{}
+//}
+//
+//func (u *User) String() string {
+//	return proto.CompactTextString(u)
+//}
+//
+//func (u *User) ProtoMessage() {}
+//
+//func (u *User) Route() string {
+//	return RouterKey
+//}
+//
+//func (u *User) Type() string {
+//	return TypeMsgUser
+//}
+//
+//func (u *User) ValidateBasic() error {
+//	return nil
+//}
+//
+//func (u *User) GetSignBytes() []byte {
+//	return sdk.MustSortJSON(Cdc.MustMarshalJSON(&u))
+//}
+//
+//func (u *User) GetSigners() []sdk.AccAddress {
+//	return []sdk.AccAddress{u.UserAccount}
+//}
