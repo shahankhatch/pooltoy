@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/interchainberlin/pooltoy/app/params"
 	"os"
 	"path"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/cli"
 
 	"github.com/interchainberlin/pooltoy/app"
@@ -31,9 +29,6 @@ import (
 func main() {
 	// Configure cobra to sort commands
 	cobra.EnableCommandSorting = false
-
-	// Instantiate the codec for the command line application
-	cdc := params.MakeConfig()
 
 	// Read in the configuration file for the sdk
 	config := sdk.GetConfig()
@@ -64,8 +59,8 @@ func main() {
 	// Construct Root Command
 	rootCmd.AddCommand(
 		rpc.StatusCommand(),
-		queryCmd(cdc.AminoCodec.Amino),
-		txCmd(cdc.AminoCodec.Amino),
+		queryCmd(),
+		txCmd(),
 		flags.LineBreak,
 		flags.LineBreak,
 		keys.Commands(pooltoytypes.ModuleName),
@@ -84,7 +79,7 @@ func main() {
 	}
 }
 
-func queryCmd(cdc *amino.Codec) *cobra.Command {
+func queryCmd() *cobra.Command {
 	queryCmd := &cobra.Command{
 		Use:     "query",
 		Aliases: []string{"q"},
@@ -107,7 +102,7 @@ func queryCmd(cdc *amino.Codec) *cobra.Command {
 	return queryCmd
 }
 
-func txCmd(cdc *amino.Codec) *cobra.Command {
+func txCmd() *cobra.Command {
 	txCmd := &cobra.Command{
 		Use:   "tx",
 		Short: "Transactions subcommands",
@@ -141,15 +136,6 @@ func txCmd(cdc *amino.Codec) *cobra.Command {
 
 	return txCmd
 }
-
-// registerRoutes registers the routes from the different modules for the LCD.
-// NOTE: details on the routes added for each module are in the module documentation
-// NOTE: If making updates here you also need to update the test helper in client/lcd/test_helper.go
-//func registerRoutes(rs *lcd.RestServer) {
-//	client.RegisterRoutes(rs.CliCtx, rs.Mux)
-//	authrest.RegisterTxRoutes(rs.CliCtx, rs.Mux)
-//	app.ModuleBasics.RegisterRESTRoutes(rs.CliCtx, rs.Mux)
-//}
 
 func initConfig(cmd *cobra.Command) error {
 	home, err := cmd.PersistentFlags().GetString(cli.HomeFlag)
