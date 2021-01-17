@@ -8,7 +8,7 @@ import (
 
 //var _ sdk.Msg = &User{}
 
-type User struct {
+type User1 struct {
 	Creator     sdk.AccAddress `json:"creator" yaml:"creator"`
 	ID          string         `json:"id" yaml:"id"`
 	UserAccount sdk.AccAddress `json:"userAccount" yaml:"userAccount"`
