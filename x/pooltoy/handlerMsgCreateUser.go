@@ -14,7 +14,7 @@ func handleMsgCreateUser(ctx sdk.Context, k pooltoykeeper.Keeper, msg pooltoytyp
 		Creator:     msg.Creator,
 		UserAccount: msg.UserAccount,
 		IsAdmin:     msg.IsAdmin,
-		ID:          msg.ID,
+		Id:          msg.Id,
 		Name:        msg.Name,
 		Email:       msg.Email,
 	}
@@ -28,14 +28,14 @@ func handleMsgCreateUser(ctx sdk.Context, k pooltoykeeper.Keeper, msg pooltoytyp
 
 	// does this creator have permission to create this new user?
 	// bare in mind special case allows create as initialization when there are no users yet
-	creator := k.GetUserByAccAddress(ctx, msg.Creator)
-	if creator.UserAccount.Empty() && len(allUsers) != 0 {
+	creator := k.GetUserByAccAddress(ctx, msg.CreatorAccAddress())
+	if creator.UserAddressAccAddress().Empty() && len(allUsers) != 0 {
 		errMsg := fmt.Sprintf("user %s does not exist", msg.Creator)
 		return nil, sdkerrors.Wrap(sdkerrors.ErrUnauthorized, errMsg)
 	}
 
 	//  check that new user doesn't exist already
-	if existingUser := k.GetUserByAccAddress(ctx, msg.UserAccount); existingUser.UserAccount.Equals(msg.UserAccount) {
+	if existingUser := k.GetUserByAccAddress(ctx, msg.UserAddressAccAddress()); existingUser.UserAddressAccAddress().Equals(msg.UserAddressAccAddress()) {
 		errMsg := fmt.Sprintf("user %s already exists", msg.UserAccount)
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, errMsg)
 	}

@@ -6,11 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
-const TypeMsgUser = "msg_create_user"
+const TypeMsgCreateUser = "msg_create_user"
 
 var _ sdk.Msg = &MsgCreateUser{}
 
-type MsgCreateUser struct {
+type MsgCreateUser1 struct {
 	ID          string
 	Creator     sdk.AccAddress `json:"creator" yaml:"creator"`
 	UserAccount sdk.AccAddress `json:"userAccount" yaml:"userAccount"`
@@ -19,25 +19,31 @@ type MsgCreateUser struct {
 	Email       string         `json:"email" yaml:"email"`
 }
 
-func (msg *MsgCreateUser) Reset() {
-	*msg = MsgCreateUser{}
-}
-
-func (msg *MsgCreateUser) String() string {
-	return TypeMsgUser
-}
-
-func (msg MsgCreateUser) ProtoMessage() {}
-
 func NewMsgCreateUser(creator sdk.AccAddress, userAccount sdk.AccAddress, isAdmin bool, name string, email string) MsgCreateUser {
 	return MsgCreateUser{
-		ID:          uuid.New().String(),
-		Creator:     creator,
-		UserAccount: userAccount,
+		Id:          uuid.New().String(),
+		Creator:     creator.String(),
+		UserAccount: userAccount.String(),
 		IsAdmin:     isAdmin,
 		Name:        name,
 		Email:       email,
 	}
+}
+
+func (msg *MsgCreateUser) CreatorAccAddress() sdk.AccAddress {
+	accCreator, err := sdk.AccAddressFromBech32(msg.Creator)
+	if err != nil {
+		panic("Invalid address found")
+	}
+	return accCreator
+}
+
+func (msg *MsgCreateUser) UserAddressAccAddress() sdk.AccAddress {
+	accUserAccount, err := sdk.AccAddressFromBech32(msg.UserAccount)
+	if err != nil {
+		panic("Invalid address found")
+	}
+	return accUserAccount
 }
 
 func (msg *MsgCreateUser) Route() string {
@@ -45,11 +51,12 @@ func (msg *MsgCreateUser) Route() string {
 }
 
 func (msg *MsgCreateUser) Type() string {
-	return "CreateUser"
+	return TypeMsgCreateUser
 }
 
 func (msg *MsgCreateUser) GetSigners() []sdk.AccAddress {
-	return []sdk.AccAddress{msg.Creator}
+	acc, _ := sdk.AccAddressFromBech32(msg.Creator)
+	return []sdk.AccAddress{acc}
 }
 
 func (msg *MsgCreateUser) GetSignBytes() []byte {
@@ -58,10 +65,12 @@ func (msg *MsgCreateUser) GetSignBytes() []byte {
 }
 
 func (msg *MsgCreateUser) ValidateBasic() error {
-	if msg.Creator.Empty() {
+	accCreator, _ := sdk.AccAddressFromBech32(msg.Creator)
+	if accCreator.Empty() {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "creator can't be empty")
 	}
-	if msg.UserAccount.Empty() {
+	accUser, _ := sdk.AccAddressFromBech32(msg.UserAccount)
+	if accUser.Empty() {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "UserAccount can't be empty")
 	}
 	if msg.Name == "" {
